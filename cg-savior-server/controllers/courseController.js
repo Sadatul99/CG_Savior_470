@@ -17,7 +17,7 @@ const getCourseByCode = async (req, res) => {
   } catch (err) {
     res.status(500).send({ message: err.message });
   }
-};
+};no
 
 const createCourse = async (req, res) => {
   const db = getDB();
