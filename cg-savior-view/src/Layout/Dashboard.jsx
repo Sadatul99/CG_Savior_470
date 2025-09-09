@@ -4,21 +4,26 @@ import AnimatedLogo from "../components/AnimatedLogo/AnimatedLogo";
 import ThemeToggle from "../components/ThemeToggle/ThemeToggle";
 import useAdmin from "../hooks/useAdmin";
 import useFaculty from "../hooks/useFaculty";
+import useAuth from "../hooks/useAuth";
 
 const Dashboard = () => {
-  // const [ adminLoading] = useAdmin();
-  // const [isFaculty, facultyLoading] = useFaculty();
+   const { user, loading: authLoading } = useAuth();
+  const [isAdmin, adminLoading] = useAdmin();
+  const [isFaculty, facultyLoading] = useFaculty();
 
-  //Show loading until both roles are determined
-  // if (adminLoading || facultyLoading) {
-  //   return (
-  //     <div className="flex items-center justify-center h-screen text-white">
-  //       Checking access...
-  //     </div>
-  //   );
-  // }
- const isAdmin = true
-  // const isFaculty = true
+   // Show loading until authentication and both roles are determined
+  if (authLoading || adminLoading || facultyLoading) {
+    return (
+      <div className="flex items-center justify-center h-screen text-white">
+        Checking access...
+      </div>
+    );
+  }
+
+  // If no user (not authenticated), don't render dashboard
+  if (!user) {
+    return null; // or redirect to login
+  }
 
   const navClass = ({ isActive }) =>
     `flex items-center gap-3 p-3 rounded-lg transition ${
@@ -32,7 +37,7 @@ const Dashboard = () => {
       return (
         <>
           <li>
-            <NavLink to="/dashboard" className={navClass}>
+            <NavLink to="/dashboard" end className={navClass}>
               <FaHome />
               Admin Home
             </NavLink>
@@ -42,12 +47,6 @@ const Dashboard = () => {
               ➕ Add Course
             </NavLink>
           </li>
-          
-          {/* <li>
-            <NavLink to="/dashboard/bookmarks" className={navClass}>
-              📌 Bookmarked Courses
-            </NavLink>
-          </li> */}
           <li>
             <NavLink to="/dashboard/users" className={navClass}>
               <FaUsers />
@@ -60,7 +59,7 @@ const Dashboard = () => {
       return (
         <>
           <li>
-            <NavLink to="/dashboard" className={navClass}>
+            <NavLink to="/dashboard" end className={navClass}>
               <FaHome />
               Faculty Home
             </NavLink>
@@ -75,23 +74,17 @@ const Dashboard = () => {
               📘 My Classrooms
             </NavLink>
           </li>
-          {/* <li>
-            <NavLink to="/dashboard/uploadmaterial" className={navClass}>
-              📤 Upload Materials
-            </NavLink>
-          </li> */}
         </>
       );
     } else {
       return (
         <>
           <li>
-            <NavLink to="/dashboard" className={navClass}>
+            <NavLink to="/dashboard" end className={navClass}>
               <FaHome />
               User Home
             </NavLink>
           </li>
-          
           <li>
             <NavLink to="/dashboard/bookmarks" className={navClass}>
               📌 My Bookmarks
@@ -116,6 +109,7 @@ const Dashboard = () => {
 
           <div className="divider before:bg-gray-700 after:bg-gray-700"></div>
 
+          {/* Common links for all roles */}
           <li>
             <NavLink to="/" className={navClass}>
               <FaHome /> Home

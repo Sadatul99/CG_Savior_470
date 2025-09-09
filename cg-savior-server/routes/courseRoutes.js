@@ -1,11 +1,21 @@
 const express = require('express');
 const router = express.Router();
-const courseController = require('../controllers/courseController');
+const {
+  getAllCourses,
+  getCourseByCode,
+  createCourse,
+  updateCourse,
+  deleteCourse
+} = require('../controllers/courseController');
 
-router.get('/', courseController.getAllCourses);
-router.get('/:code', courseController.getCourseByCode);
-router.post('/', courseController.createCourse);
-router.patch('/:code', courseController.updateCourse);
-router.delete('/:code', courseController.deleteCourse);
+// CRUD Routes
+router.route('/')
+  .get(getAllCourses)
+  .post(createCourse);
+
+router.route('/:code')
+  .get(getCourseByCode)
+  .patch(updateCourse)
+  .delete(deleteCourse);
 
 module.exports = router;

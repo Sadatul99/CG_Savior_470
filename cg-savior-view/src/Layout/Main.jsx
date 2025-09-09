@@ -6,7 +6,7 @@ import NavBar from "../pages/Shared/Navbar";
 
 const Main = () => {
     const location = useLocation()
-    console.log(location)
+    // console.log(location)
 
     // if it is in login or signup page it will not show navbar and footer
     const noHeaderFooter = location.pathname.includes('/login') || location.pathname.includes('/signup')

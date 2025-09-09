@@ -11,7 +11,6 @@ app.use('/auth', require('./routes/authRoutes'));
 app.use('/users', require('./routes/userRoutes'));
 app.use('/courses', require('./routes/courseRoutes'));
 app.use('/resources', require('./routes/resourceRoutes'));
-app.use('/bookmarks', require('./routes/bookmarkRoutes'));
 app.use('/classroom', require('./routes/classroomRoutes'));
 app.use('/classResources', require('./routes/classResourcesRoutes'));
 

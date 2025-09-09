@@ -1,5 +1,4 @@
-import React, { useState, useMemo } from 'react';
-import useCourses from '../../../hooks/useCourses';
+import React, { useState, useMemo, useEffect } from 'react';
 import CourseCard from '../CourseCard/CourseCard';
 import SectionTitle from '../../../components/SectionTitle/SectionTitle';
 
@@ -21,17 +20,49 @@ function useDebounce(value, delay) {
 }
 
 const Courses = () => {
-  const [courses, refetch] = useCourses();
+  const [courses, setCourses] = useState([]);
+  const [loading, setLoading] = useState(true);
   const [query, setQuery] = useState('');
   const debouncedQuery = useDebounce(query, 300);
+
+  useEffect(() => {
+    fetch('http://localhost:5000/courses')
+      .then(res => res.json())
+      .then(data => {
+        setCourses(data);
+        setLoading(false);
+      })
+      .catch(err => {
+        console.error('Error fetching courses:', err);
+        setLoading(false);
+      });
+  }, []);
+
+  const refetch = () => {
+    setLoading(true);
+    fetch('http://localhost:5000/courses')
+      .then(res => res.json())
+      .then(data => {
+        setCourses(data);
+        setLoading(false);
+      })
+      .catch(err => {
+        console.error('Error refetching courses:', err);
+        setLoading(false);
+      });
+  };
 
   const filteredCourses = useMemo(() => {
     if (!debouncedQuery) return courses;
     return courses.filter(course =>
       course.course_code.toLowerCase().includes(debouncedQuery.toLowerCase()) ||
-      course.course_name?.toLowerCase().includes(debouncedQuery.toLowerCase())
+      course.course_title?.toLowerCase().includes(debouncedQuery.toLowerCase())
     );
   }, [debouncedQuery, courses]);
+
+  if (loading) {
+    return <div className="text-center mt-10">Loading courses...</div>;
+  }
 
   return (
     <div>

@@ -1,15 +1,15 @@
-import React, { useEffect, useState } from "react";
+import React from "react";
 import { useForm } from "react-hook-form";
-import { useLocation, useNavigate, useParams } from "react-router-dom";
+import { useLocation, useNavigate } from "react-router-dom";
 import Swal from "sweetalert2";
 import SectionTitle from "../../../components/SectionTitle/SectionTitle";
-import useAxiosPublic from "../../../hooks/useAxiosPublic";
+import useAuth from "../../../hooks/useAuth";
 
 const AddClassMaterial = () => {
   const location = useLocation();
   const { class_code, course_code } = location.state || {};
   const navigate = useNavigate();
-  const axiosPublic = useAxiosPublic();
+  const { user } = useAuth();
 
   const {
     register,
@@ -20,17 +20,32 @@ const AddClassMaterial = () => {
 
   const onSubmit = async (data) => {
     const classResource = {
-      class_code:class_code,
+      class_code: class_code,
       course_code: course_code,
       description: data.description,
       type: data.type,
       link: data.link,
+      createdAt: new Date()
     };
 
     try {
-      const res = await axiosPublic.post("/classResources", classResource);
+      const response = await fetch("http://localhost:5000/classResources", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${localStorage.getItem('access-token')}`
+        },
+        body: JSON.stringify(classResource)
+      });
 
-      if (res.data.insertedId) {
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Failed to add resource');
+      }
+
+      const result = await response.json();
+
+      if (result.insertedId) {
         Swal.fire({
           position: "top-end",
           icon: "success",
@@ -39,14 +54,14 @@ const AddClassMaterial = () => {
           timer: 1500,
         });
         reset();
-        navigate(-1)
+        navigate(-1);
       }
     } catch (err) {
       console.error("Error adding class resource:", err);
       Swal.fire({
         icon: "error",
         title: "Oops...",
-        text: "Something went wrong while adding the resource!",
+        text: err.message || "Something went wrong while adding the resource!",
       });
     }
   };
@@ -59,8 +74,6 @@ const AddClassMaterial = () => {
       />
 
       <form onSubmit={handleSubmit(onSubmit)} className="space-y-4 max-w-xl mx-auto">
-        
-
         <div>
           <label className="block mb-1 font-semibold">Resource Title</label>
           <input

@@ -1,39 +1,17 @@
-import { FaArrowRight, FaRegBookmark, FaBookmark, FaTrash, FaEdit } from 'react-icons/fa';
+import { FaArrowRight, FaTrash, FaEdit } from 'react-icons/fa';
 import useAuth from '../../../hooks/useAuth';
-import useAxiosSecure from '../../../hooks/useAxiosSecure';
-import useBookmark from '../../../hooks/useBookmark';
 import { Link } from 'react-router-dom';
 import Swal from 'sweetalert2';
 import useAdmin from '../../../hooks/useAdmin';
-import useAxiosPublic from '../../../hooks/useAxiosPublic';
 
 const CourseCard = ({ course, refetch }) => {
-  const { _id, course_code, course_title, lab, pre_requisite } = course;
+  const { course_code, course_title, lab, pre_requisite } = course;
   const { user } = useAuth();
-  const axiosSecure = useAxiosSecure();
-  const axiosPublic = useAxiosPublic()
-  const [bookmark] = useBookmark();
-
-  const isBookmarked = bookmark.some(item => item.courseId === _id);
-
-  const handleBookmark = async () => {
-    if (isBookmarked) {
-      const target = bookmark.find(item => item.courseId === _id);
-      if (target) {
-        await axiosSecure.delete(`/bookmarks/${target._id}`);
-      }
-    } else {
-      const bookmarkedCourse = {
-        courseId: _id,
-        course_code,
-        email: user.email,
-      };
-      await axiosPublic.post('/bookmarks', bookmarkedCourse);
-    }
-    refetch();
-  };
+  const [isAdmin] = useAdmin();
 
   const handleDelete = async () => {
+    if (!isAdmin) return;
+
     const confirm = await Swal.fire({
       title: 'Are you sure?',
       text: `Delete course: ${course_code}?`,
@@ -44,10 +22,11 @@ const CourseCard = ({ course, refetch }) => {
 
     if (confirm.isConfirmed) {
       try {
-        await axiosPublic.delete(`/courses/${course_code}`);
+        await fetch(`http://localhost:5000/courses/${course_code}`, {
+          method: 'DELETE'
+        });
         refetch();
         Swal.fire('Deleted!', 'Course has been deleted.', 'success');
-        // Optionally: trigger a refetch of courses in parent component
       } catch (err) {
         console.error(err);
         Swal.fire('Error!', 'Failed to delete course.', 'error');
@@ -55,13 +34,11 @@ const CourseCard = ({ course, refetch }) => {
     }
   };
 
-  const isAdmin = useAdmin();
-
   return (
     <div className="bg-white rounded-xl shadow-md hover:shadow-xl p-6 transition duration-300 ease-in-out flex flex-col justify-between relative">
       {/* Admin Controls */}
       {isAdmin && (
-        <div className="absolute top-4 right-12 flex gap-3">
+        <div className="absolute top-4 right-4 flex gap-3">
           <button
             onClick={handleDelete}
             className="text-red-600 hover:text-red-800"
@@ -70,22 +47,12 @@ const CourseCard = ({ course, refetch }) => {
             <FaTrash />
           </button>
           <Link to={`/dashboard/courses/updateCourse/${course_code}`}>
-          <button className="text-blue-600 hover:text-blue-800" title="Edit Course">
-            <FaEdit />
-          </button>
+            <button className="text-blue-600 hover:text-blue-800" title="Edit Course">
+              <FaEdit />
+            </button>
           </Link>
         </div>
       )}
-
-
-      {/* Bookmark Button */}
-      <button
-        onClick={handleBookmark}
-        className="absolute top-4 right-4 text-gray-500 hover:text-indigo-600 transition"
-        title={isBookmarked ? "Remove Bookmark" : "Add to Bookmarks"}
-      >
-        {isBookmarked ? <FaBookmark className="text-xl" /> : <FaRegBookmark className="text-xl" />}
-      </button>
 
       {/* Course Info */}
       <h2 className="text-2xl font-bold text-gray-800 mb-1">{course_code}</h2>
@@ -106,7 +73,6 @@ const CourseCard = ({ course, refetch }) => {
         View
         <FaArrowRight className="text-sm" />
       </Link>
-
     </div>
   );
 };

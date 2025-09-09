@@ -1,13 +1,14 @@
-
 import { useForm } from 'react-hook-form';
-import useAxiosPublic from '../../../hooks/useAxiosPublic';
 import Swal from 'sweetalert2';
 import { useLoaderData, useNavigate } from 'react-router-dom';
 import SectionTitle from '../../../components/SectionTitle/SectionTitle';
+import useAuth from '../../../hooks/useAuth';
 
 const UpdateCourse = () => {
   const course = useLoaderData();
   const navigate = useNavigate();
+  const { user } = useAuth();
+  
   const {
     register,
     handleSubmit,
@@ -24,51 +25,62 @@ const UpdateCourse = () => {
       course_description: course.course_description
     }
   });
-  
-  const axiosPublic = useAxiosPublic();
 
   const onSubmit = async (data) => {
     try {
       const updatedCourse = {
         course_title: data.course_title,
-        pre_requisite: data.pre_requisite || null,
-        soft_pre_requisite: data.soft_pre_requisite || null,
+        pre_requisite: data.pre_requisite || "N/A",
+        soft_pre_requisite: data.soft_pre_requisite || "N/A",
         lab: data.lab === 'true',
         credit: parseFloat(data.credit),
         course_description: data.course_description
       };
 
-      const courseRes = await axiosPublic.patch(`/courses/${course.course_code}`, updatedCourse);
+      console.log('Sending update:', updatedCourse); // Debug log
 
-      if (courseRes.data.modifiedCount) {
-        Swal.fire({
-          position: "top-end",
-          icon: "success",
-          title: "Course updated successfully",
-          showConfirmButton: false,
-          timer: 1500
-        });
-        reset();
-        navigate(-1);
-      } else {
-        Swal.fire({
-          icon: "info",
-          title: "No changes detected",
-          text: "The course information remains unchanged"
-        });
+      const response = await fetch(`http://localhost:5000/courses/${course.course_code}`, {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${localStorage.getItem('access-token')}`
+        },
+        body: JSON.stringify(updatedCourse)
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Failed to update course');
       }
+
+      const updatedCourseData = await response.json();
+      console.log('Update response:', updatedCourseData); // Debug log
+
+      Swal.fire({
+        position: "top-end",
+        icon: "success",
+        title: "Course updated successfully",
+        showConfirmButton: false,
+        timer: 1500
+      });
+      
+      // Navigate back after successful update
+      setTimeout(() => {
+        navigate(-1);
+      }, 1600);
+
     } catch (error) {
       console.error('Update error:', error);
       Swal.fire({
         icon: "error",
         title: "Update failed",
-        text: error.response?.data?.message || 'Failed to update course'
+        text: error.message || 'Failed to update course. Please check console for details.'
       });
     }
   };
 
   return (
-    <div className="max-w-3xl mx-auto p-6  rounded-xl shadow-md">
+    <div className="max-w-3xl mx-auto p-6 rounded-xl shadow-md">
       <SectionTitle heading="Update Course" subHeading="Refresh info" />
 
       <form onSubmit={handleSubmit(onSubmit)} className="space-y-5">
@@ -88,7 +100,6 @@ const UpdateCourse = () => {
         <div>
           <label className="block font-medium mb-1">Course Title</label>
           <input
-            defaultValue={course.course_title}
             type="text"
             {...register("course_title", { required: "Course Title is required" })}
             className="input input-bordered w-full"
@@ -100,10 +111,10 @@ const UpdateCourse = () => {
         <div>
           <label className="block font-medium mb-1">Pre-requisite</label>
           <input
-            defaultValue={course.pre_requisite}
             type="text"
             {...register("pre_requisite")}
             className="input input-bordered w-full"
+            placeholder="Enter N/A if no prerequisite"
           />
         </div>
 
@@ -111,10 +122,10 @@ const UpdateCourse = () => {
         <div>
           <label className="block font-medium mb-1">Soft Pre-requisite</label>
           <input
-            defaultValue={course.soft_pre_requisite}
             type="text"
             {...register("soft_pre_requisite")}
             className="input input-bordered w-full"
+            placeholder="Enter N/A if no soft prerequisite"
           />
         </div>
 
@@ -123,10 +134,11 @@ const UpdateCourse = () => {
           <div>
             <label className="block font-medium mb-1">Lab</label>
             <select
-              defaultValue={course.lab}
-              {...register("lab")} className="select select-bordered w-full">
-              <option value={true}>Yes</option>
-              <option value={false}>No</option>
+              {...register("lab")} 
+              className="select select-bordered w-full"
+            >
+              <option value="true">Yes</option>
+              <option value="false">No</option>
             </select>
           </div>
 
@@ -134,21 +146,25 @@ const UpdateCourse = () => {
           <div>
             <label className="block font-medium mb-1">Credit</label>
             <input
-              defaultValue={course.credit}
               type="number"
-              step="1"
-              {...register("credit", { required: "Credit is required" })}
+              step="0.5"
+              min="0.5"
+              max="6"
+              {...register("credit", { 
+                required: "Credit is required",
+                min: { value: 0.5, message: "Credit must be at least 0.5" },
+                max: { value: 6, message: "Credit cannot exceed 6" }
+              })}
               className="input input-bordered w-full"
             />
             {errors.credit && <p className="text-red-500 text-sm mt-1">{errors.credit.message}</p>}
           </div>
         </div>
 
-        {/*course_description  */}
+        {/* course_description */}
         <div>
           <label className="block font-medium mb-1">Course Description</label>
           <textarea
-            defaultValue={course.course_description}
             {...register("course_description", { required: "Description is required" })}
             rows="5"
             className="textarea textarea-bordered w-full"
@@ -162,8 +178,6 @@ const UpdateCourse = () => {
         >
           Update Course
         </button>
-
-
       </form>
     </div>
   );

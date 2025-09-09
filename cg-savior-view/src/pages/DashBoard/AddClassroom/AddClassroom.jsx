@@ -1,13 +1,9 @@
 import SectionTitle from "../../../components/SectionTitle/SectionTitle";
 import { Controller, useForm } from "react-hook-form";
-// import useAxiosSecure from "../../../hooks/useAxiosSecure";
-import useCourses from "../../../hooks/useCourses";
 import Swal from "sweetalert2";
 import Select from "react-select";
 import useAuth from "../../../hooks/useAuth";
-import useAxiosPublic from "../../../hooks/useAxiosPublic";
-
-
+import { useState, useEffect } from "react";
 
 const AddClassroom = () => {
   const {
@@ -19,12 +15,23 @@ const AddClassroom = () => {
     setError
   } = useForm();
 
-  const {user} = useAuth();
+  const { user } = useAuth();
+  const [courses, setCourses] = useState([]);
+  const [loading, setLoading] = useState(true);
 
-  const axiosPublic = useAxiosPublic()
-  const [courses] = useCourses(); // ✅ using your custom hook
+  useEffect(() => {
+    fetch('http://localhost:5000/courses')
+      .then(res => res.json())
+      .then(data => {
+        setCourses(data);
+        setLoading(false);
+      })
+      .catch(err => {
+        console.error('Error fetching courses:', err);
+        setLoading(false);
+      });
+  }, []);
 
-  // Map course options for react-select
   const courseOptions = courses.map((course) => ({
     value: course.course_code,
     label: `${course.course_code} - ${course.course_title}`
@@ -33,28 +40,33 @@ const AddClassroom = () => {
   const onSubmit = async (data) => {
     const classroom = {
       class_code: data.class_code.trim().toLowerCase(),
-      course_code: data.course_code.value, // because of react-select
+      course_code: data.course_code.value,
       email: user.email,
       faculty_initial: data.faculty_initial,
       section: data.section,
-      semester: data.semester
+      semester: data.semester,
+      createdAt: new Date(),
+      updatedAt: new Date()
     };
-  
+
     try {
-      // Step 1: Check if class_code already exists
-      // const checkRes = await axiosPublic.get(`/classroom/check-class-code/${classroom.class_code}`);
-      // if (checkRes.data.exists) {
-      //   //  If exists, set form error
-      //   setError("class_code", {
-      //     type: "manual",
-      //     message: "This Class Code already exists"
-      //   });
-      //   return;
-      //}
-  
-      //  Step 2: If not exists, create classroom
-      const res = await axiosPublic.post("/classroom", classroom);
-      if (res.data.insertedId) {
+      const response = await fetch("http://localhost:5000/classroom", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${localStorage.getItem('access-token')}`
+        },
+        body: JSON.stringify(classroom)
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Failed to create classroom');
+      }
+
+      const result = await response.json();
+
+      if (result.insertedId) {
         Swal.fire({
           icon: "success",
           title: "Classroom Created",
@@ -65,6 +77,12 @@ const AddClassroom = () => {
       }
     } catch (error) {
       console.error("Error:", error);
+      if (error.message.includes('already exists')) {
+        setError("class_code", {
+          type: "manual",
+          message: "This Class Code already exists"
+        });
+      }
       Swal.fire({
         icon: "error",
         title: "Error",
@@ -73,13 +91,13 @@ const AddClassroom = () => {
     }
   };
 
+  if (loading) return <div className="text-center py-10">Loading courses...</div>;
+
   return (
     <div className="max-w-3xl mx-auto p-6 bg-white rounded-xl shadow-md">
       <SectionTitle heading="Create Classroom" subHeading="" />
 
       <form onSubmit={handleSubmit(onSubmit)} className="space-y-5">
-
-        {/*  Searchable Course Dropdown */}
         <div>
           <label className="block font-medium mb-1">Course Code</label>
           <Controller
@@ -101,7 +119,6 @@ const AddClassroom = () => {
           )}
         </div>
 
-        {/* Other Inputs */}
         <div>
           <label className="block font-medium mb-1">Class Code</label>
           <input

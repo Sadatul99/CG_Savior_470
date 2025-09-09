@@ -1,7 +1,7 @@
 import SectionTitle from "../../../components/SectionTitle/SectionTitle";
 import { useForm } from "react-hook-form";
-import useAxiosPublic from "../../../hooks/useAxiosPublic";
 import Swal from "sweetalert2";
+import useAuth from "../../../hooks/useAuth";
 
 const AddCourse = () => {
   const {
@@ -10,38 +10,61 @@ const AddCourse = () => {
     formState: { errors },
     reset
   } = useForm();
-  const axiosPublic = useAxiosPublic()
+  const { user } = useAuth();
 
   const onSubmit = async (data) => {
-    const course = {
-    course_code: data.course_code,
-    course_title: data.course_title,
-    pre_requisite: data.pre_requisite || null,
-    soft_pre_requisite: data.soft_pre_requisite || null,
-    lab: data.lab === 'true', 
-    credit: parseFloat(data.credit), 
-    course_description: data.course_description
-  }
+    try {
+      const course = {
+        course_code: data.course_code.toUpperCase(), // Convert to uppercase
+        course_title: data.course_title,
+        pre_requisite: data.pre_requisite || "N/A",
+        soft_pre_requisite: data.soft_pre_requisite || "N/A",
+        lab: data.lab === 'true', 
+        credit: parseFloat(data.credit), 
+        course_description: data.course_description,
+        createdAt: new Date(),
+        updatedAt: new Date()
+      };
 
-    const courseRes = await axiosPublic.post('/courses', course);
+      const response = await fetch('http://localhost:5000/courses', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${localStorage.getItem('access-token')}`
+        },
+        body: JSON.stringify(course)
+      });
 
-    if (courseRes.data.insertedId) {
-      reset();
-      // show success popup
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Failed to add course');
+      }
+
+      const result = await response.json();
+
+      if (result.insertedId) {
+        reset();
+        // show success popup
+        Swal.fire({
+          position: "top-end",
+          icon: "success",
+          title: `Course added successfully.`,
+          showConfirmButton: false,
+          timer: 1500
+        });
+      }
+    } catch (error) {
+      console.error('Add course error:', error);
       Swal.fire({
-        position: "top-end",
-        icon: "success",
-        title: `course is added successfully.`,
-        showConfirmButton: false,
-        timer: 1500
+        icon: "error",
+        title: "Failed to add course",
+        text: error.message || 'Please try again'
       });
     }
-    // console.log(course)
-    
   };
 
   return (
-    <div className="max-w-3xl mx-auto p-6  rounded-xl shadow-md">
+    <div className="max-w-3xl mx-auto p-6 rounded-xl shadow-md">
       <SectionTitle heading="Add Course" subHeading="What's new" />
 
       <form onSubmit={handleSubmit(onSubmit)} className="space-y-5">
@@ -51,8 +74,15 @@ const AddCourse = () => {
           <label className="block font-medium mb-1">Course Code</label>
           <input
             type="text"
-            {...register("course_code", { required: "Course Code is required" })}
+            {...register("course_code", { 
+              required: "Course Code is required",
+              pattern: {
+                value: /^[A-Za-z]{2,4}\s?\d{3,4}$/,
+                message: "Course code should be in format like CSE101, MATH 202"
+              }
+            })}
             className="input input-bordered w-full"
+            placeholder="e.g., CSE101, MATH 202"
           />
           {errors.course_code && <p className="text-red-500 text-sm mt-1">{errors.course_code.message}</p>}
         </div>
@@ -64,6 +94,7 @@ const AddCourse = () => {
             type="text"
             {...register("course_title", { required: "Course Title is required" })}
             className="input input-bordered w-full"
+            placeholder="e.g., Introduction to Programming"
           />
           {errors.course_title && <p className="text-red-500 text-sm mt-1">{errors.course_title.message}</p>}
         </div>
@@ -75,6 +106,7 @@ const AddCourse = () => {
             type="text"
             {...register("pre_requisite")}
             className="input input-bordered w-full"
+            placeholder="Enter course codes or N/A if none"
           />
         </div>
 
@@ -85,6 +117,7 @@ const AddCourse = () => {
             type="text"
             {...register("soft_pre_requisite")}
             className="input input-bordered w-full"
+            placeholder="Enter course codes or N/A if none"
           />
         </div>
 
@@ -92,9 +125,13 @@ const AddCourse = () => {
         <div className="grid grid-cols-2 gap-4">
           <div>
             <label className="block font-medium mb-1">Lab</label>
-            <select {...register("lab")} className="select select-bordered w-full">
-              <option value={true}>Yes</option>
-              <option value={false}>No</option>
+            <select 
+              {...register("lab")} 
+              className="select select-bordered w-full"
+              defaultValue="true"
+            >
+              <option value="true">Yes</option>
+              <option value="false">No</option>
             </select>
           </div>
 
@@ -103,21 +140,29 @@ const AddCourse = () => {
             <label className="block font-medium mb-1">Credit</label>
             <input
               type="number"
-              step="1"
-              {...register("credit", { required: "Credit is required" })}
+              step="0.5"
+              min="0.5"
+              max="6"
+              {...register("credit", { 
+                required: "Credit is required",
+                min: { value: 0.5, message: "Credit must be at least 0.5" },
+                max: { value: 6, message: "Credit cannot exceed 6" }
+              })}
               className="input input-bordered w-full"
+              placeholder="e.g., 3.0"
             />
             {errors.credit && <p className="text-red-500 text-sm mt-1">{errors.credit.message}</p>}
           </div>
         </div>
 
-        {/*course_description  */}
+        {/* course_description */}
         <div>
           <label className="block font-medium mb-1">Course Description</label>
           <textarea
             {...register("course_description", { required: "Description is required" })}
             rows="5"
             className="textarea textarea-bordered w-full"
+            placeholder="Describe the course content, objectives, and learning outcomes..."
           ></textarea>
           {errors.course_description && <p className="text-red-500 text-sm mt-1">{errors.course_description.message}</p>}
         </div>
@@ -128,8 +173,6 @@ const AddCourse = () => {
         >
           Add Course
         </button>
-
-
       </form>
     </div>
   );

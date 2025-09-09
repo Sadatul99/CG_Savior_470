@@ -1,25 +1,38 @@
 import { useParams, useNavigate } from 'react-router-dom';
-import { useQuery } from '@tanstack/react-query';
-import useAxiosPublic from '../../../hooks/useAxiosPublic';
+import { useState, useEffect } from 'react';
 import Resources from '../Resources/Resources';
 import ClassroomResources from '../ClassroomResources/ClassroomResources';
 
 const CoursePage = () => {
   const { course_code } = useParams();
-  const axiosPublic = useAxiosPublic();
   const navigate = useNavigate();
+  const [course, setCourse] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
 
-  const { data: course, isLoading, error } = useQuery({
-    queryKey: ['course', course_code],
-    queryFn: async () => {
-      const res = await axiosPublic.get(`/courses/${course_code}`);
-      return res.data;
-    },
-    enabled: !!course_code, 
-  });
+  useEffect(() => {
+    if (!course_code) return;
 
-  if (isLoading) return <p className="text-center mt-10 text-gray-600">Loading course details...</p>;
-  if (error) return <p className="text-center mt-10 text-red-500">Error: {error.message}</p>;
+    fetch(`http://localhost:5000/courses/${course_code}`)
+      .then(res => {
+        if (!res.ok) {
+          throw new Error('Course not found');
+        }
+        return res.json();
+      })
+      .then(data => {
+        setCourse(data);
+        setLoading(false);
+      })
+      .catch(err => {
+        setError(err.message);
+        setLoading(false);
+      });
+  }, [course_code]);
+
+  if (loading) return <p className="text-center mt-10 text-gray-600">Loading course details...</p>;
+  if (error) return <p className="text-center mt-10 text-red-500">Error: {error}</p>;
+  if (!course) return <p className="text-center mt-10 text-red-500">Course not found</p>;
 
   const {
     course_title,
@@ -61,7 +74,7 @@ const CoursePage = () => {
 
       {/* Resources Section */}
       <Resources course_code={course_code} />
-      {/* <ClassroomResources course_code={course_code} /> */}
+      <ClassroomResources course_code={course_code} />
     </>
   );
 };

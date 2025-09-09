@@ -1,24 +1,42 @@
-import { useQuery } from "@tanstack/react-query";
-import useAxiosSecure from "../../../hooks/useAxiosSecure";
+import { useState, useEffect } from "react";
 import { FaTrashAlt, FaUsers, FaChalkboardTeacher, FaArrowDown } from "react-icons/fa";
 import Swal from "sweetalert2";
 
 const AllUsers = () => {
-  const axiosSecure = useAxiosSecure();
+  const [users, setUsers] = useState([]);
+  const [loading, setLoading] = useState(true);
 
-  const { data: users = [], refetch } = useQuery({
-    queryKey: ["users"],
-    queryFn: async () => {
-      const res = await axiosSecure.get("/users", {
+  useEffect(() => {
+    fetchUsers();
+  }, []);
+
+  const fetchUsers = async () => {
+    try {
+      const response = await fetch("http://localhost:5000/users", {
         headers: {
-          authorization: `Bearer ${localStorage.getItem('access-token')}`
+          'Authorization': `Bearer ${localStorage.getItem('access-token')}`
         }
       });
-      return res.data;
-    },
-  });
 
-  const confirmAndChangeRole = (user, newRole) => {
+      if (!response.ok) {
+        throw new Error('Failed to fetch users');
+      }
+
+      const data = await response.json();
+      setUsers(data);
+    } catch (error) {
+      console.error('Error fetching users:', error);
+      Swal.fire({
+        icon: "error",
+        title: "Error",
+        text: "Failed to load users"
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const confirmAndChangeRole = async (user, newRole) => {
     Swal.fire({
       title: `Are you sure?`,
       text: `You want to make ${user.name} a ${newRole === "user" ? "Normal User" : newRole}?`,
@@ -27,27 +45,50 @@ const AllUsers = () => {
       confirmButtonColor: "#3085d6",
       cancelButtonColor: "#d33",
       confirmButtonText: "Yes, do it!",
-    }).then((result) => {
+    }).then(async (result) => {
       if (result.isConfirmed) {
-        axiosSecure
-          .patch(`/users/role/${user.id}`, { role: newRole })
-          .then((res) => {
-            if (res.data.affectedRows > 0) {
-              refetch();
-              Swal.fire({
-                position: "top-end",
-                icon: "success",
-                title: `${user.name} is now a ${newRole === "user" ? "Normal User" : newRole}!`,
-                showConfirmButton: false,
-                timer: 1500,
-              });
-            }
+        try {
+          const response = await fetch(`http://localhost:5000/users/role/${user._id}`, {
+            method: 'PATCH',
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': `Bearer ${localStorage.getItem('access-token')}`
+            },
+            body: JSON.stringify({ role: newRole })
           });
+
+          if (!response.ok) {
+            const errorData = await response.json();
+            throw new Error(errorData.error || 'Failed to update role');
+          }
+
+          const updatedUser = await response.json();
+          
+          // Update local state
+          setUsers(prevUsers => 
+            prevUsers.map(u => u._id === user._id ? updatedUser : u)
+          );
+
+          Swal.fire({
+            position: "top-end",
+            icon: "success",
+            title: `${user.name} is now a ${newRole === "user" ? "Normal User" : newRole}!`,
+            showConfirmButton: false,
+            timer: 1500,
+          });
+        } catch (error) {
+          console.error('Error updating role:', error);
+          Swal.fire({
+            icon: "error",
+            title: "Update failed",
+            text: error.message || 'Failed to update user role'
+          });
+        }
       }
     });
   };
 
-  const handleDeleteUser = (user) => {
+  const handleDeleteUser = async (user) => {
     Swal.fire({
       title: "Are you sure?",
       text: "You won't be able to revert this!",
@@ -56,21 +97,52 @@ const AllUsers = () => {
       confirmButtonColor: "#3085d6",
       cancelButtonColor: "#d33",
       confirmButtonText: "Yes, delete it!",
-    }).then((result) => {
+    }).then(async (result) => {
       if (result.isConfirmed) {
-        axiosSecure.delete(`/users/${user.id}`).then((res) => {
-          if (res.data.affectedRows > 0) {
-            refetch();
+        try {
+          const response = await fetch(`http://localhost:5000/users/${user._id}`, {
+            method: 'DELETE',
+            headers: {
+              'Authorization': `Bearer ${localStorage.getItem('access-token')}`
+            }
+          });
+
+          if (!response.ok) {
+            const errorData = await response.json();
+            throw new Error(errorData.error || 'Failed to delete user');
+          }
+
+          const resultData = await response.json();
+          
+          if (resultData.deleted) {
+            // Update local state
+            setUsers(prevUsers => prevUsers.filter(u => u._id !== user._id));
+            
             Swal.fire({
               title: "Deleted!",
               text: "User has been removed.",
               icon: "success",
             });
           }
-        });
+        } catch (error) {
+          console.error('Error deleting user:', error);
+          Swal.fire({
+            icon: "error",
+            title: "Delete failed",
+            text: error.message || 'Failed to delete user'
+          });
+        }
       }
     });
   };
+
+  if (loading) {
+    return (
+      <div className="flex justify-center items-center h-64">
+        <div className="text-xl">Loading users...</div>
+      </div>
+    );
+  }
 
   return (
     <div className="p-6">
@@ -95,7 +167,7 @@ const AllUsers = () => {
           {/* Table Body */}
           <tbody>
             {users.map((user, index) => (
-              <tr key={user.id} className="border-b hover:bg-gray-100 transition">
+              <tr key={user._id} className="border-b hover:bg-gray-100 transition">
                 <td className="p-4 font-medium">{index + 1}</td>
                 <td className="p-4">{user.name}</td>
                 <td className="p-4">{user.email}</td>

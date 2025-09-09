@@ -1,30 +1,40 @@
 // components/ClassroomResources/ClassroomResources.jsx
 
 import { useQuery } from '@tanstack/react-query';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import useAxiosPublic from '../../../hooks/useAxiosPublic';
 import SectionTitle from '../../../components/SectionTitle/SectionTitle';
 
 const ClassroomResources = ({ course_code }) => {
-  const axiosPublic = useAxiosPublic();
+const [classes, setClasses] = useState([]);
+  const [allResources, setAllResources] = useState([]);
   const [selectedSection, setSelectedSection] = useState('Default');
+  const [loading, setLoading] = useState(true);
 
-  const { data: classes = [] } = useQuery({
-    queryKey: ['classrooms', course_code],
-    queryFn: async () => {
-      const res = await axiosPublic.get('/classroom');
-      return res.data.filter((cls) => cls.course_code === course_code);
-    },
-  });
+  useEffect(() => {
+    const fetchData = async () => {
+      try {
+        const [classesRes, resourcesRes] = await Promise.all([
+          fetch('http://localhost:5000/classroom'),
+          fetch('http://localhost:5000/classResources')
+        ]);
 
-  const { data: allResources = [] } = useQuery({
-    queryKey: ['classResources', course_code],
-    queryFn: async () => {
-      const res = await axiosPublic.get('/classResources');
-      return res.data.filter((res) => res.course_code === course_code);
-    },
-  });
+        if (!classesRes.ok || !resourcesRes.ok) throw new Error('Failed to fetch data');
 
+        const classesData = await classesRes.json();
+        const resourcesData = await resourcesRes.json();
+
+        setClasses(classesData.filter(cls => cls.course_code === course_code));
+        setAllResources(resourcesData.filter(res => res.course_code === course_code));
+      } catch (err) {
+        console.error('Error fetching data:', err);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchData();
+  }, [course_code]);
   const filteredResources =
     selectedSection === 'Default'
       ? []

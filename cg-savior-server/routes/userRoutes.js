@@ -1,13 +1,29 @@
 const express = require('express');
 const router = express.Router();
-const userController = require('../controllers/userController');
-const { verifyToken, verifyAdmin } = require('../middlewares/authMiddleware');
+const {
+  getAllUsers,
+  createUser,
+  getUser,
+  updateUser,
+  deleteUser,
+  getUserByEmail,
+  updateUserRole
+} = require('../controllers/userController');
 
-router.get('/', userController.getAllUsers);
-// router.get('/admin/:email', verifyToken, userController.checkAdmin);
-// router.get('/faculty/:email', verifyToken, userController.checkFaculty);
-router.post('/', userController.createUser);
-// router.delete('/:id', verifyToken, verifyAdmin, userController.deleteUser);
-router.patch('/role/:id', userController.updateUserRole);
+// CRUD Routes
+router.route('/')
+  .get(getAllUsers)
+  .post(createUser);
+
+router.route('/email/:email')
+  .get(getUserByEmail);
+
+router.route('/:id')
+  .get(getUser)
+  .put(updateUser)
+  .delete(deleteUser);
+
+router.route('/role/:id')
+  .patch(updateUserRole);
 
 module.exports = router;
