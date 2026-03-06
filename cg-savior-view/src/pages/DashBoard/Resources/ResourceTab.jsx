@@ -41,7 +41,7 @@ const ResourceTab = ({ items, refetch, isAdmin }) => {
                         <th className="px-4 py-3 border">Type</th>
                         <th className="px-4 py-3 border">Link</th>
                         <th className="px-4 py-3 border">Votes</th>
-                        {isAdmin && <th className="px-4 py-3 border">Actions</th>}
+                        {/* {isAdmin && <th className="px-4 py-3 border">Actions</th>} */}
                     </tr>
                 </thead>
                 <tbody>
@@ -62,7 +62,7 @@ const ResourceTab = ({ items, refetch, isAdmin }) => {
                                 </a>
                             </td>
                             <td className="px-4 py-2 border text-center">{res.vote}</td>
-                            {isAdmin && (
+                            {/* {isAdmin && (
                                 <td className="px-4 py-2 border text-center">
                                     <button
                                         onClick={() => handleDelete(res.id)}
@@ -72,10 +72,13 @@ const ResourceTab = ({ items, refetch, isAdmin }) => {
                                         <FaTrash />
                                     </button>
                                 </td>
-                            )}
+                            )} */}
                         </tr>
                     ))}
                 </tbody>
+                <td>
+                    hello
+                </td>
             </table>
         </div>
     );
