@@ -76,9 +76,6 @@ const ResourceTab = ({ items, refetch, isAdmin }) => {
                         </tr>
                     ))}
                 </tbody>
-                <td>
-                    hello
-                </td>
             </table>
         </div>
     );
